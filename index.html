@@ -4,7 +4,7 @@
 		<meta charset="UTF-8" />
 		<link rel="icon" type="image/svg+xml" href="/vite.svg" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Embalses</title>
+		<title id="TituloWeb">Embalses</title>
 		<link
 			rel="stylesheet"
 			href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -13,8 +13,43 @@
 		/>
 	</head>
 	<body>
+		<select name="idioma" id="selectidioma">
+			<option id="esoption" value="es">🇪🇸Español</option>
+			<option id="enoption" value="en">🇺🇸Ingles</option>
+		</select>
 		<div id="app">
-			<h1>Embalses</h1>
+			<h1 id="TituloWebInterior">Embalses</h1>
+
+			<section id="Introduccion_corta">
+				<p>
+					Esta página web te permite ver información de los embalses cercanos a
+					tu ubicación.
+				</p>
+			</section>
+
+			<section>
+				<h2 id="Introduccion_titulo">Instrucciones</h2>
+				<ul>
+					<li id="Introduccion_1">
+						Puedes ajustar el radio de busqueda con el control deslizante.
+					</li>
+					<li id="Introduccion_2">
+						Modifica la ubicación manualmente o permite que se detecte tu
+						ubicación actual.
+					</li>
+					<li id="Introduccion_3">
+						Una vez configurada la búsqueda, verás los embalses dentro del radio
+						especificado.
+					</li>
+				</ul>
+			</section>
+			<div id="map"></div>
+			<div id="location-controls">
+				<button id="get-location">Obtener mi ubicación</button>
+				<input type="text" id="manual-lat" placeholder="Latitud" />
+				<input type="text" id="manual-lon" placeholder="Longitud" />
+				<button id="set-manual-location">Establecer ubicación manual</button>
+			</div>
 			<div id="progress-container">
 				<div id="progress-labels">
 					<span>1</span>
@@ -28,15 +63,23 @@
 					step="0.001"
 					value="0"
 				/>
-				<div id="value-display">Valor: 1</div>
+				<div id="value-display">Radio: 1 km</div>
 			</div>
-			<div id="location-controls">
-				<button id="get-location">Obtener mi ubicación</button>
-				<input type="text" id="manual-lat" placeholder="Latitud" />
-				<input type="text" id="manual-lon" placeholder="Longitud" />
-				<button id="set-manual-location">Establecer ubicación manual</button>
+			<button id="Cargar">Cargar datos</button>
+			<div id="table-container">
+				<h2 id="TituloTabla">Embalses cercanos</h2>
+				<table id="editable-table">
+					<thead>
+						<tr>
+							<th id="tableid">Identificador</th>
+							<th id="tablenombre">Nombre</th>
+							<th id="tableambito">Ambito</th>
+							<th id="tablecapmax">Capacidad Maxima</th>
+							<th id="tableelectricidad">Genera Electricidad</th>
+						</tr>
+					</thead>
+				</table>
 			</div>
-			<div id="map" style="height: 500px; margin-bottom: 20px"></div>
 			<canvas id="embalsesChart"></canvas>
 		</div>
 		<script type="module" src="/main.js"></script>

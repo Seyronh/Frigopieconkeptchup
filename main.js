@@ -13,16 +13,6 @@ async function httpGet(theUrl) {
 	});
 }
 
-function solicitarDatosHistoricosAgua(id) {
-	return httpGet(
-		`https://g927779dd8b47aa-frigopieconketchup.adb.eu-madrid-1.oraclecloudapps.com/ords/admin/agua/?q=id eq ${id}`
-	);
-}
-function solicitarEmbalses() {
-	return httpGet(
-		"https://g927779dd8b47aa-frigopieconketchup.adb.eu-madrid-1.oraclecloudapps.com/ords/admin/embalsesutf8/"
-	);
-}
 async function conjuntoTablas(id) {
 	let datos = [];
 	let offset = 0;
@@ -31,19 +21,30 @@ async function conjuntoTablas(id) {
 		let url = new URL(
 			`https://g927779dd8b47aa-frigopieconketchup.adb.eu-madrid-1.oraclecloudapps.com/ords/admin/conjunto/`
 		);
-		if (id) url.searchParams.set("q", `id eq ${id}`);
+		if (id) url.searchParams.set("q", `{"id":{"$eq":${id}}}`);
 		url.searchParams.set("offset", offset);
-		console.log(url);
 		let datosnuevos = await httpGet(url);
-		offset += datosnuevos.offset;
+		offset += datosnuevos.count;
 		has_more = datosnuevos.hasMore;
-		console.log(datosnuevos);
 		datos = datos.concat(datosnuevos.items);
 	} while (has_more);
 	return datos;
 }
-const datos = conjuntoTablas(1);
-datos.then((r) => console.log(r));
+async function caracteristicas(datos) {
+	let media = datos.reduce((a, b) => a + b, 0) / datos.length;
+	let copia = [...datos];
+	copia.sort();
+	let moda = copia[Math.floor(copia.length / 2)];
+	let minimo = copia[0];
+	let maximo = copia[copia.length - 1];
+	return { media: media, maximo: maximo, minimo: minimo, moda: moda };
+}
+const datos = conjuntoTablas(18);
+
+datos.then((r) => {
+	let caracteristicasDatos = caracteristicas(r.map((e) => e.agua_actual));
+	console.log(caracteristicasDatos);
+});
 
 // Inicializar el mapa
 const map = L.map("map").setView([40.416775, -3.70379], 6); // Centro en España
@@ -62,24 +63,25 @@ function updateLocation(lat, lon) {
 		map.removeLayer(circle);
 	}
 	userMarker = L.marker([lat, lon]).addTo(map);
+	let radio = Math.round(progressInput.value * maxValue);
+	if (radio == 0) radio++;
 	circle = L.circle([lat, lon], {
 		color: "green",
 		fillColor: "#f03",
 		fillOpacity: 0.2,
-		radius: Math.round(progressInput.value * maxValue),
+		radius: radio * 1000,
 	}).addTo(map);
-	console.log(Math.round(progressInput.value * maxValue));
+	document.getElementById("manual-lat").value = lat;
+	document.getElementById("manual-lon").value = lon;
 	map.setView([lat, lon]);
 }
 
 // Obtener ubicación del usuario
-document.getElementById("get-location").addEventListener("click", () => {
+function getUbicacion() {
 	if ("geolocation" in navigator) {
 		navigator.geolocation.getCurrentPosition(
 			(position) => {
 				updateLocation(position.coords.latitude, position.coords.longitude);
-				document.getElementById("manual-lat").value = position.coords.latitude;
-				document.getElementById("manual-lon").value = position.coords.longitude;
 			},
 			(error) => {
 				console.error("Error obteniendo la ubicación:", error);
@@ -93,6 +95,9 @@ document.getElementById("get-location").addEventListener("click", () => {
 			"Tu navegador no soporta geolocalización. Por favor, introduce la ubicación manualmente."
 		);
 	}
+}
+document.getElementById("get-location").addEventListener("click", () => {
+	getUbicacion();
 });
 
 // Establecer ubicación manual
@@ -110,15 +115,46 @@ document.getElementById("set-manual-location").addEventListener("click", () => {
 const progressInput = document.getElementById("progress-input");
 const valueDisplay = document.getElementById("value-display");
 const maxValueSpan = document.getElementById("max-value");
-const maxValue = 100000;
+const maxValue = 500;
 maxValueSpan.textContent = maxValue;
 
 progressInput.addEventListener("input", (e) => {
 	const value = e.target.value;
 	let radio = Math.round(value * maxValue);
 	if (radio == 0) radio++;
-	valueDisplay.textContent = `Radio: ${radio}`;
+	valueDisplay.textContent = `${
+		traducciones[selectidioma.value]["value-display"]
+	} ${radio} km`;
+
+	circle.setRadius(radio * 1000);
 });
 map.on("click", (e) => {
 	updateLocation(e.latlng.lat, e.latlng.lng);
 });
+import traducciones from "./traducciones.json";
+function cargarIdioma(idioma) {
+	const traduccionesIdioma = traducciones[idioma];
+	for (const campo in traduccionesIdioma) {
+		document.getElementById(campo).textContent = traduccionesIdioma[campo];
+	}
+}
+const selectidioma = document.getElementById("selectidioma");
+selectidioma.addEventListener("change", (e) => {
+	cargarIdioma(e.target.value);
+	let radio = Math.round(progressInput.value * maxValue);
+	if (radio == 0) radio++;
+	valueDisplay.textContent = `${
+		traducciones[selectidioma.value]["value-display"]
+	} ${radio} km`;
+});
+
+window.onload = function () {
+	cargarIdioma(selectidioma.value);
+	progressInput.value = 0.1;
+	let radio = Math.round(progressInput.value * maxValue);
+	if (radio == 0) radio++;
+	valueDisplay.textContent = `${
+		traducciones[selectidioma.value]["value-display"]
+	} ${radio} km`;
+	getUbicacion();
+};
