@@ -12,24 +12,23 @@ async function httpGet(theUrl) {
 	});
 }
 
-async function conjuntoTablas(id) {
-	let datos = [];
-	let offset = 0;
+async function conjuntoTablas(id, offset) {
 	let has_more;
-	do {
-		let url = new URL(
-			`https://g927779dd8b47aa-frigopieconketchup.adb.eu-madrid-1.oraclecloudapps.com/ords/admin/conjunto/`
-		);
-		if (id) url.searchParams.set("q", `{"id":{"$eq":${id}}}`);
-		url.searchParams.set("offset", offset);
-		let datosnuevos = await httpGet(url);
-		offset += datosnuevos.count;
-		has_more = datosnuevos.hasMore;
-		datos = datos.concat(datosnuevos.items);
-	} while (has_more);
-	return datos;
+	let url = new URL(
+		`https://g927779dd8b47aa-frigopieconketchup.adb.eu-madrid-1.oraclecloudapps.com/ords/admin/conjunto/`
+	);
+	url.searchParams.set("limit", 1000000);
+	if (id) url.searchParams.set("q", `{"id":{"$eq":${id}}}`);
+	url.searchParams.set("offset", offset);
+	let datosnuevos = await httpGet(url);
+	offset += datosnuevos.count;
+	has_more = datosnuevos.hasMore;
+	todoslosdatos = todoslosdatos.concat(datosnuevos.items);
+	if (has_more) conjuntoTablas(undefined, offset);
+	return;
 }
-conjuntoTablas();
+let todoslosdatos = [];
+conjuntoTablas(undefined, 0);
 
 async function informacion(id) {
 	let datos = [];
@@ -62,24 +61,20 @@ async function informacion(id) {
 			if (
 				calcularDistancia(x, y, posicionCentro.lat, posicionCentro.lng) < radio
 			) {
-				/*
-				conjuntoTablas(item.id).then((historial) => {
-					let estadisticas = caracteristicas(
-						historial.map((e) => e.agua_total)
-					);*/
+				let historial = todoslosdatos.filter((e) => e.id == item.id);
+				let estadisticas = caracteristicas(historial.map((e) => e.agua_actual));
 				añadirFila(
 					item.id,
 					item.embalse_nombre,
 					item.ambito_nombre,
 					item.agua_total,
-					item.electrico_flag /*,
-						estadisticas.maximo,
-						estadisticas.minimo,
-						estadisticas.media,
-						estadisticas.moda*/
+					item.electrico_flag,
+					estadisticas.maximo,
+					estadisticas.minimo,
+					estadisticas.media,
+					estadisticas.moda
 				);
 				puntos.push(L.marker([x, y]).addTo(map));
-				//});
 			}
 		});
 		offset += datosnuevos.count;
@@ -89,7 +84,7 @@ async function informacion(id) {
 	return datos;
 }
 
-async function caracteristicas(datos) {
+function caracteristicas(datos) {
 	let media = datos.reduce((a, b) => a + b, 0) / datos.length;
 	let copia = [...datos];
 	copia.sort();
@@ -205,7 +200,7 @@ setInterval(() => {
 		informacion();
 		lastcomprobado = progressInput.value;
 	}
-}, 100);
+}, 1000);
 
 map.on("click", (e) => {
 	updateLocation(e.latlng.lat, e.latlng.lng);
