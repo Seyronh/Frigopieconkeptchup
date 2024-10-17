@@ -20,7 +20,10 @@
 		"tableambito": "Ambito",
 		"tablecapmax": "Capacidad maxima",
 		"tableelectricidad": "Genera electricidad",
-		"Cargar": "Cargar datos"
+		"tablemaximo": "Maximo de Agua",
+		"tableminimo": "Minimo de Agua",
+		"tablemedia": "Media del Agua",
+		"tablemoda": "Moda del Agua"
 	},
 	"en": {
 		"TituloWeb": "🗺️Reservoirs",
@@ -43,6 +46,9 @@
 		"tableambito": "Scope",
 		"tablecapmax": "Maximum capacity",
 		"tableelectricidad": "Generates electricity",
-		"Cargar": "Load data"
+		"tablemaximo": "Maximum Water",
+		"tableminimo": "Minimum Water",
+		"tablemedia": "Average of Water",
+		"tablemoda": "Trend of Water"
 	}
 }

@@ -1,5 +1,4 @@
 import "./style.css";
-import Chart from "chart.js/auto";
 import L from "leaflet";
 
 async function httpGet(theUrl) {
@@ -30,6 +29,66 @@ async function conjuntoTablas(id) {
 	} while (has_more);
 	return datos;
 }
+conjuntoTablas();
+
+async function informacion(id) {
+	let datos = [];
+	let offset = 0;
+	let has_more;
+	puntos.forEach((p) => {
+		map.removeLayer(p);
+	});
+	puntos = [];
+	const tabla = document.getElementById("editable-table");
+
+	for (var i = tabla.rows.length - 1; i > 0; i--) {
+		tabla.deleteRow(i);
+	}
+	do {
+		let url = new URL(
+			"https://g927779dd8b47aa-frigopieconketchup.adb.eu-madrid-1.oraclecloudapps.com/ords/admin/informacion/"
+		);
+		if (id) url.searchParams.set("q", `{"id":{"$eq":${id}}}`);
+		url.searchParams.set("offset", offset);
+		let datosnuevos = await httpGet(url);
+		datosnuevos.items.forEach((item) => {
+			if (item.x == null || item.y == null) return;
+			let x = parseFloat(item.x.replace(",", "."));
+			let y = parseFloat(item.y.replace(",", "."));
+			if (!userMarker) return;
+			let posicionCentro = userMarker.getLatLng();
+			let radio = Math.round(progressInput.value * maxValue);
+			if (radio == 0) radio++;
+			if (
+				calcularDistancia(x, y, posicionCentro.lat, posicionCentro.lng) < radio
+			) {
+				/*
+				conjuntoTablas(item.id).then((historial) => {
+					let estadisticas = caracteristicas(
+						historial.map((e) => e.agua_total)
+					);*/
+				añadirFila(
+					item.id,
+					item.embalse_nombre,
+					item.ambito_nombre,
+					item.agua_total,
+					item.electrico_flag /*,
+						estadisticas.maximo,
+						estadisticas.minimo,
+						estadisticas.media,
+						estadisticas.moda*/
+				);
+				puntos.push(L.marker([x, y]).addTo(map));
+				//});
+			}
+		});
+		offset += datosnuevos.count;
+		has_more = datosnuevos.hasMore;
+		datos = datos.concat(datosnuevos.items);
+	} while (has_more);
+	return datos;
+}
+
 async function caracteristicas(datos) {
 	let media = datos.reduce((a, b) => a + b, 0) / datos.length;
 	let copia = [...datos];
@@ -39,12 +98,21 @@ async function caracteristicas(datos) {
 	let maximo = copia[copia.length - 1];
 	return { media: media, maximo: maximo, minimo: minimo, moda: moda };
 }
-const datos = conjuntoTablas(18);
 
-datos.then((r) => {
-	let caracteristicasDatos = caracteristicas(r.map((e) => e.agua_actual));
-	console.log(caracteristicasDatos);
-});
+function convertirafecha(texto) {
+	const [fechaStr, horaStr] = texto.split(" ");
+	const [dia, mes, año] = fechaStr.split("/");
+	const añocompleto = `${parseInt(año) > 24 ? "19" : "20"}${año}`;
+	const fecha = new Date(`${añocompleto}-${mes}-${dia}T${horaStr}`);
+	return fecha;
+}
+function ordenadorPorFecha(datos) {
+	let copia = [...r];
+	copia.sort((a, b) => {
+		return convertirafecha(a.fecha) - convertirafecha(b.fecha);
+	});
+	return copia;
+}
 
 // Inicializar el mapa
 const map = L.map("map").setView([40.416775, -3.70379], 6); // Centro en España
@@ -55,6 +123,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 
 let userMarker;
 let circle;
+let puntos = [];
 
 // Función para actualizar la ubicación en el mapa
 function updateLocation(lat, lon) {
@@ -63,6 +132,7 @@ function updateLocation(lat, lon) {
 		map.removeLayer(circle);
 	}
 	userMarker = L.marker([lat, lon]).addTo(map);
+	userMarker._icon.id = "huechange";
 	let radio = Math.round(progressInput.value * maxValue);
 	if (radio == 0) radio++;
 	circle = L.circle([lat, lon], {
@@ -74,6 +144,7 @@ function updateLocation(lat, lon) {
 	document.getElementById("manual-lat").value = lat;
 	document.getElementById("manual-lon").value = lon;
 	map.setView([lat, lon]);
+	informacion();
 }
 
 // Obtener ubicación del usuario
@@ -128,6 +199,14 @@ progressInput.addEventListener("input", (e) => {
 
 	circle.setRadius(radio * 1000);
 });
+let lastcomprobado = -1;
+setInterval(() => {
+	if (lastcomprobado !== progressInput.value) {
+		informacion();
+		lastcomprobado = progressInput.value;
+	}
+}, 100);
+
 map.on("click", (e) => {
 	updateLocation(e.latlng.lat, e.latlng.lng);
 });
@@ -158,3 +237,79 @@ window.onload = function () {
 	} ${radio} km`;
 	getUbicacion();
 };
+function añadirFila(
+	identificador,
+	nombre,
+	ambito,
+	capacidadMaxima,
+	generaElectricidad,
+	maximo,
+	minimo,
+	media,
+	moda
+) {
+	// Seleccionar la tabla
+
+	const tabla = document.getElementById("editable-table");
+
+	// Crear una nueva fila
+
+	const nuevaFila = tabla.insertRow();
+
+	// Crear y añadir celdas a la nueva fila
+
+	const celdaId = nuevaFila.insertCell(0);
+
+	const celdaNombre = nuevaFila.insertCell(1);
+
+	const celdaAmbito = nuevaFila.insertCell(2);
+
+	const celdaCapacidad = nuevaFila.insertCell(3);
+
+	const celdaElectricidad = nuevaFila.insertCell(4);
+	const Maximo = nuevaFila.insertCell(5);
+	const Minimo = nuevaFila.insertCell(6);
+	const Media = nuevaFila.insertCell(7);
+	const Moda = nuevaFila.insertCell(8);
+
+	// Asignar contenido a las celdas
+
+	celdaId.textContent = identificador;
+
+	celdaNombre.textContent = nombre;
+
+	celdaAmbito.textContent = ambito;
+
+	celdaCapacidad.textContent = capacidadMaxima;
+
+	celdaElectricidad.textContent = generaElectricidad ? "Sí" : "No";
+	Maximo.textContent = maximo;
+	Minimo.textContent = minimo;
+	Media.textContent = media;
+	Moda.textContent = moda;
+}
+
+function calcularDistancia(lat1, lon1, lat2, lon2) {
+	const R = 6371; // Radius of the Earth in kilometers
+
+	const dLat = ((lat2 - lat1) * Math.PI) / 180;
+
+	const dLon = ((lon2 - lon1) * Math.PI) / 180;
+
+	const lat1Rad = (lat1 * Math.PI) / 180;
+
+	const lat2Rad = (lat2 * Math.PI) / 180;
+
+	const a =
+		Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+		Math.cos(lat1Rad) *
+			Math.cos(lat2Rad) *
+			Math.sin(dLon / 2) *
+			Math.sin(dLon / 2);
+
+	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+	const distance = R * c;
+
+	return distance;
+}

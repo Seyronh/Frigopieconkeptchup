@@ -226,3 +226,6 @@ body {
 #selectidioma:hover {
 	background-color: #3498db;
 }
+#huechange {
+	filter: hue-rotate(120deg);
+}
